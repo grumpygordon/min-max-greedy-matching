@@ -21,7 +21,7 @@ template<typename T, typename U> pair<T,U>& operator++           (pair<T, U> &p)
 
 using ll = long long;
 
-mt19937 rnd(2971262);
+mt19937 rnd(9111225);
 
 template<typename T>
 void setmin(T &x, T y) {
@@ -42,7 +42,7 @@ using ull = unsigned long long;
 
 const int MAX_GRAPH_SIZE = 18, INF = (int)1e9 + 100;
 
-const int n = 8;
+const int n = 7;
 
 using Matrix = array<array<int, MAX_GRAPH_SIZE>, MAX_GRAPH_SIZE>;
 using EdgeList = vector<pair<int, int>>;
@@ -51,7 +51,7 @@ Matrix g;
 
 #define EXTREME_ASSUMPTION false
 
-int banned_node = -1;
+int banned_node = 0;
 
 template<typename T>
 void fill(T &s, T v) {

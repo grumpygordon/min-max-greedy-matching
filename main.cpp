@@ -69,7 +69,7 @@ namespace helpers {
     }
 }
 
-#define USE_HEURISTIC true
+#define USE_HEURISTIC false
 
 // TODO
 //  write split exists checker
@@ -84,32 +84,119 @@ ll tot;
 int mx, cnt;
 
 void run() {
-    if (1) {
-        auto covers = propositions::get_cover_discrete_Mplus_Nminus(g, g, nullopt);
+    if (0) {
+        // TODO: еще есть куда копать, формально тебе надо чтобы для любого плохого V в (backawrd_G, G)
+        // TODO: было плохое подмножество V чисто внутри G[А] или G[B] (с оговоркой)
+#define prop propositions::get_cover_discrete_Mplus_Mminus
+        auto covers = prop(g, g, nullopt);
         propositions::get_minimal_sets(covers);
         for (int A = 1; A < (1 << n) - 1; A++) {
             Matrix backward_G = g;
             int bad_B = 0;
             for (int i = 0; i < n; i++)
                 for (int j = 0; j < n; j++)
-                    if ((A & (1 << i)) && (A & (1 << j)) == 0) {
+                    if ((A & (1 << i)) && (~A & (1 << j))) {
                         backward_G[i][j] = 0;
                         if (g[j][i]) {
                             bad_B |= (1 << j);
                         }
                     }
-            vector<int> bad_covers;
-            for (int m : covers) {
-                bool inside_A = (m & A) == m;
-                bool inside_B = (m & ~A) == m;
-                bool f1 = (!inside_A && !inside_B);
-                bool f2 = (inside_B && (m & bad_B));
-                f2 = 0;
-                if (f1 || f2)
-                    bad_covers.push_back(m);
+            covers = prop(backward_G, g, nullopt);
+            propositions::get_minimal_sets(covers);
+            set<int> bad_A_sets, bad_B_sets;
+            vector<int> bad_B_supersets(1 << n);
+            vector<int> bad_A_supersets(1 << n);
+            {
+                // only edges in A
+                Matrix backward_G{};
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++)
+                        if ((A & (1 << i)) && (A & (1 << j)))
+                            backward_G[i][j] = g[i][j];
+                auto tmp = prop(backward_G, backward_G, nullopt);
+                bad_A_sets = {all(tmp)};
+                for (int i : bad_A_sets)
+                    bad_A_supersets[i] = 1;
+                for (int i = 0; i < (1 << n); i++)
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & i) == 0 && bad_A_supersets[i])
+                            bad_A_supersets[i ^ (1 << j)] = 1;
+
             }
-            if (propositions::get_cover_discrete_Mplus_Nminus(backward_G, g, bad_covers).empty())
+            if (1) {
+                // only edges in B
+                Matrix backward_G{};
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++)
+                        if ((~A & (1 << i)) && (~A & (1 << j)))
+                            backward_G[i][j] = g[i][j];
+                auto tmp = prop(backward_G, backward_G, nullopt);
+                bad_B_sets = {all(tmp)};
+                for (int i : bad_B_sets)
+                    bad_B_supersets[i] = 1;
+                for (int i = 0; i < (1 << n); i++)
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & i) == 0 && bad_B_supersets[i])
+                            bad_B_supersets[i ^ (1 << j)] = 1;
+            }
+            set<int> has_matching_to_A;
+            if (1) {
+                // remove edges in B
+                Matrix backward_G = g;
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < n; j++)
+                        if ((~A & (1 << i)) && (~A & (1 << j)))
+                            backward_G[i][j] = 0;
+                auto tmp = propositions::get_matching_sets_Mplus(backward_G, nullopt);
+                has_matching_to_A = {all(tmp)};
+            }
+            bool has_bad_set = 0;
+            for (int m : covers) {
+                bool bad_A_subset = 0;
+                if (bad_A_supersets[m & A])
+                    bad_A_subset = 1;
+                if (0) {
+                    int X = (m & A);
+                    int i = X;
+                    while (i) {
+                        if (bad_A_sets.count(i)) {
+                            bad_A_subset = 1;
+                            break;
+                        }
+                        i = (i - 1) & X;
+                    }
+                }
+                bool bad_B_subset = 0;
+                if (1) {
+                    bad_B_subset = 1;
+                    int X = (m & ~A);
+                    int i = X;
+                    bool once = 0;
+                    while (1) {
+                        if (has_matching_to_A.count(i ^ (m & A))) {
+                            once = 1;
+                            if (!bad_B_supersets[X ^ i]) {
+                                bad_B_subset = 0;
+                                break;
+                            }
+                        }
+                        if (i == 0)
+                            break;
+                        i = (i - 1) & X;
+                    }
+                    assert(once);
+                }
+                if (bad_A_subset || bad_B_subset);
+                else {
+                    has_bad_set = 1;
+                    break;
+                }
+            }
+            if (!has_bad_set) {
+//                if (rnd() % 1000 == 0)
+//                    cerr << A << '\n';
                 return;
+            }
         }
         helpers::print();
         cerr << "min V\n";
@@ -117,7 +204,7 @@ void run() {
             cerr << bitset<n>(i) << '\n';
         assert(0);
     }
-    if (1) {
+    if (0) {
 //        auto [covers, nc] = propositions::get_cover_discrete_Mplus_Nminus(g, g, {});
         auto covers = propositions::get_cover_discrete_Mplus_Nminus(g, g, {});
         vector<int> nc{};
@@ -142,9 +229,11 @@ void run() {
         return;
     }
 
-#define validator_func propositions::is_discrete_2V_Npluspi_Nminuspi
+#define validator_func(a, b) propositions::is_discrete_Mpluspi_Mminus(a, b) && \
+                             propositions::is_discrete_test_Mminus(a, b)
     if (USE_HEURISTIC) {
-#define balance_func propositions::get_discrete_2V_Npluspi_Nminuspi
+#define balance_func(a, b) propositions::get_discrete_Mpluspi_Mminus(a, b) + \
+                           propositions::get_discrete_test_Mminus(a, b)
         array<int, n> pi;
         iota(all(pi), 0);
         cnt++;
@@ -182,7 +271,7 @@ void run() {
     }
     for (auto pi : generators::all_gen())
         if (validator_func(propositions::get_backward_graph(pi, g), g)) {
-//        if (propositions::is_discrete_Mpluspi_Nminuspi(propositions::get_backward_graph(pi, g), g) &&
+//        if (propositions::is_discrete_Mpluspi_Mminus(propositions::get_backward_graph(pi, g), g) &&
 //            validator_func(propositions::get_backward_graph(pi, g), g)) {
 //                    cerr << "good pi\n";
 //                    for (int i : pi)
@@ -197,7 +286,7 @@ void run() {
     assert(0);
 }
 
-#define MAX_EDGE 100000
+#define MAX_EDGE 10000
 
 #define USE_CIN 0
 #define cin if(USE_CIN) cin

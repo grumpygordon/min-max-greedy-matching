@@ -438,15 +438,6 @@ namespace propositions {
             int upward, backward;
             get_upward_backward_masks(mask, upward, backward);
 
-            fill(khun::khun_graph, 0);
-            for (int i = 0; i < n; i++)
-                if ((1 << i) & mask) {
-                    for (int j = 0; j < n; j++)
-                        if (((1 << j) & mask) == 0)
-                            khun::khun_graph[i][j] = backward_graph[i][j];
-                }
-
-            int matching_size_outward = khun::get_matching_size(mask);
 
             fill(khun::khun_graph, 0);
             for (int i = 0; i < n; i++)
@@ -457,10 +448,20 @@ namespace propositions {
                 }
 
             int matching_size_backward = khun::get_matching_size(mask);
+            if (matching_size_backward >= msz)
+                continue;
 
-            if (matching_size_backward < msz)
-                balance += max(0, matching_size_outward - (msz - 1));
+            fill(khun::khun_graph, 0);
+            for (int i = 0; i < n; i++)
+                if ((1 << i) & mask) {
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & mask) == 0)
+                            khun::khun_graph[i][j] = backward_graph[i][j];
+                }
 
+            int matching_size_outward = khun::get_matching_size(mask);
+
+            balance += max(0, matching_size_outward - (msz - 1));
         }
         return balance;
     }
@@ -552,16 +553,14 @@ namespace propositions {
         swap(q, g);
     }
 
-    vector<int> get_cover_discrete_Mplus_Nminus(Matrix backward_G, Matrix G, optional<vector<int>> candidate_sets) {
+    vector<int> get_matching_sets_Mplus(Matrix backward_G, optional<vector<int>> candidate_sets) {
         PRINT_FUNCTION_NAME_MACRO
         initialize();
-        graph = G;
-        backward_graph = backward_G;
-        fill_backward_upward_masks(false, true);
+        graph = backward_graph = backward_G;
         vector<int> covers;
         if (!candidate_sets.has_value()) {
             vector<int> alls;
-            for (int mask = (1 << n) - 1; mask > 0; mask--)
+            for (int mask = (1 << n) - 1; mask >= 0; mask--)
                 if (popcnt(mask) * 2 <= n)
                     alls.push_back(mask);
             candidate_sets = alls;
@@ -584,13 +583,29 @@ namespace propositions {
             if (matching_size_outward < msz)
                 continue;
 
+            covers.emplace_back(mask);
+        }
+        return covers;
+    }
+
+    vector<int> get_cover_discrete_Mplus_Nminus(Matrix backward_G, Matrix G, optional<vector<int>> candidate_sets) {
+        PRINT_FUNCTION_NAME_MACRO
+        vector<int> covers;
+        covers = get_matching_sets_Mplus(backward_G, candidate_sets);
+        initialize();
+        graph = G;
+        backward_graph = backward_G;
+        fill_backward_upward_masks(false, true);
+        vector<int> res;
+        for (int mask : covers) {
+            int msz = popcnt(mask);
             int upward, backward;
             get_upward_backward_masks(mask, upward, backward);
 
             if (popcnt(backward) < 2 * msz)
-                covers.emplace_back(mask);
+                res.emplace_back(mask);
         }
-        return covers;
+        return res;
 //        get_minimal_sets(covers);
 //        auto A = covers;
 //        for (int &i : covers) {
@@ -599,6 +614,33 @@ namespace propositions {
 //            i = (~i & backward);
 //        }
 //        return A;
+    }
+
+    vector<int> get_cover_discrete_Mplus_Mminus(Matrix backward_G, Matrix G, optional<vector<int>> candidate_sets) {
+        PRINT_FUNCTION_NAME_MACRO
+        vector<int> covers;
+        covers = get_matching_sets_Mplus(backward_G, candidate_sets);
+        initialize();
+        graph = G;
+        backward_graph = backward_G;
+        fill_backward_upward_masks(false, true);
+        vector<int> res;
+        for (int mask : covers) {
+            int msz = popcnt(mask);
+
+            fill(khun::khun_graph, 0);
+            for (int i = 0; i < n; i++)
+                if ((1 << i) & mask) {
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & mask) == 0)
+                            khun::khun_graph[i][j] = graph[j][i];
+                }
+            int matching_size_backward = khun::get_matching_size(mask);
+
+            if (matching_size_backward < msz)
+                res.emplace_back(mask);
+        }
+        return res;
     }
 
     vector<int> get_cover_discrete_Mplus_Mminus(Matrix G) {
@@ -638,6 +680,46 @@ namespace propositions {
         return covers;
     }
 
+    int get_discrete_Mpluspi_Mminus(Matrix backward_G, Matrix G) {
+        PRINT_FUNCTION_NAME_MACRO
+        initialize();
+        fill_graph(backward_G, G);
+        fill_backward_upward_masks(true, false);
+        int balance = 0;
+        for (int mask = (1 << n) - 1; mask > 0; mask--) {
+            int msz = popcnt(mask);
+            if (msz * 2 > n)
+                continue;
+            int upward, backward;
+            get_upward_backward_masks(mask, upward, backward);
+
+            fill(khun::khun_graph, 0);
+            for (int i = 0; i < n; i++)
+                if ((1 << i) & mask) {
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & mask) == 0)
+                            khun::khun_graph[i][j] = (graph[j][i]);
+                }
+
+            int matching_size_backward = khun::get_matching_size(mask);
+            if (matching_size_backward >= msz)
+                continue;
+
+            fill(khun::khun_graph, 0);
+            for (int i = 0; i < n; i++)
+                if ((1 << i) & mask) {
+                    for (int j = 0; j < n; j++)
+                        if (((1 << j) & mask) == 0)
+                            khun::khun_graph[i][j] = backward_graph[i][j];
+                }
+
+            int matching_size_outward = khun::get_matching_size(mask);
+
+            balance += max(0, matching_size_outward - (msz - 1));
+        }
+        return balance;
+    }
+
     bool is_discrete_Mpluspi_Mminus(Matrix backward_G, Matrix G) {
         PRINT_FUNCTION_NAME_MACRO
         initialize();
@@ -658,6 +740,9 @@ namespace propositions {
 
             int matching_size_outward = khun::get_matching_size(mask);
 
+            if (matching_size_outward < msz)
+                continue;
+
             fill(khun::khun_graph, 0);
             for (int i = 0; i < n; i++)
                 if ((1 << i) & mask) {
@@ -668,15 +753,15 @@ namespace propositions {
 
             int matching_size_backward = khun::get_matching_size(mask);
 
-            if (matching_size_backward < msz && matching_size_outward >= msz)
+            if (matching_size_backward < msz)
                 return 0;
         }
         return 1;
     }
 
     // n=6 10kk
-    // n=7 17369271
-    // n=8 2725050
+    // n=7 20kk
+    // n=8 3kk
     bool is_discrete_test_Nminuspi(Matrix backward_G, Matrix G) {
         PRINT_FUNCTION_NAME_MACRO
         assert(banned_node != -1);
@@ -757,20 +842,19 @@ namespace propositions {
                     }
                 int matching_size_outward = khun::get_matching_size(mask);
 
-                if (matching_size_outward < msz)
-                    continue;
+                if (matching_size_outward >= msz) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if ((1 << i) & mask) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0 && j != banned_node)
+                                    khun::khun_graph[i][j] = (graph[j][i] && !backward_graph[j][i]);
+                        }
 
-                fill(khun::khun_graph, 0);
-                for (int i = 0; i < n; i++)
-                    if ((1 << i) & mask) {
-                        for (int j = 0; j < n; j++)
-                            if (((1 << j) & mask) == 0 && j != banned_node)
-                                khun::khun_graph[i][j] = (graph[j][i] && !backward_graph[j][i]);
+                    int matching_size_backward = khun::get_matching_size(mask);
+                    if (matching_size_backward < msz) {
+                        f1 = 1;
                     }
-
-                int matching_size_backward = khun::get_matching_size(mask);
-                if (matching_size_backward < msz) {
-                    f1 = 1;
                 }
             }
             if (!f2) {
@@ -784,20 +868,19 @@ namespace propositions {
                     }
                 int matching_size_outward = khun::get_matching_size(mask);
 
-                if (matching_size_outward < msz)
-                    continue;
+                if (matching_size_outward >= msz) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if (((1 << i) & mask) || i == banned_node) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0 && j != banned_node)
+                                    khun::khun_graph[i][j] = (graph[j][i] && !backward_graph[j][i]);
+                        }
 
-                fill(khun::khun_graph, 0);
-                for (int i = 0; i < n; i++)
-                    if (((1 << i) & mask) || i == banned_node) {
-                        for (int j = 0; j < n; j++)
-                            if (((1 << j) & mask) == 0 && j != banned_node)
-                                khun::khun_graph[i][j] = (graph[j][i] && !backward_graph[j][i]);
+                    int matching_size_backward = khun::get_matching_size(mask | (1 << banned_node));
+                    if (matching_size_backward < msz + 1) {
+                        f2 = 1;
                     }
-
-                int matching_size_backward = khun::get_matching_size(mask | (1 << banned_node));
-                if (matching_size_backward < msz + 1) {
-                    f2 = 1;
                 }
             }
             if (f1 && f2)
@@ -806,6 +889,71 @@ namespace propositions {
         return !(f1 && f2);
     }
 
+    int get_discrete_test_Mminus(Matrix backward_G, Matrix G) {
+        PRINT_FUNCTION_NAME_MACRO
+        assert(banned_node != -1);
+        initialize();
+        fill_graph(backward_G, G);
+        fill_backward_upward_masks(true, false);
+        int f1 = 0, f2 = 0;
+        for (int mask = (1 << n) - 1; mask > 0; mask--) {
+            if ((1 << banned_node) & mask)
+                continue;
+            // f1
+            {
+                int msz = popcnt(mask);
+                fill(khun::khun_graph, 0);
+                for (int i = 0; i < n; i++)
+                    if ((1 << i) & mask) {
+                        for (int j = 0; j < n; j++)
+                            if (((1 << j) & mask) == 0 && j != banned_node)
+                                khun::khun_graph[i][j] = (graph[j][i]);
+                    }
+
+                int matching_size_backward = khun::get_matching_size(mask);
+                if (matching_size_backward < msz) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if ((1 << i) & mask) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0)
+                                    khun::khun_graph[i][j] = backward_graph[i][j];
+                        }
+                    int matching_size_outward = khun::get_matching_size(mask);
+                    f1 += max(0, matching_size_outward - (msz - 1));
+                }
+            }
+            // f2
+            {
+                int msz = popcnt(mask);
+                fill(khun::khun_graph, 0);
+                for (int i = 0; i < n; i++)
+                    if (((1 << i) & mask) || i == banned_node) {
+                        for (int j = 0; j < n; j++)
+                            if (((1 << j) & mask) == 0 && j != banned_node)
+                                khun::khun_graph[i][j] = (graph[j][i]);
+                    }
+
+                int matching_size_backward = khun::get_matching_size(mask | (1 << banned_node));
+                if (matching_size_backward < msz + 1) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if ((1 << i) & mask) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0 && j != banned_node)
+                                    khun::khun_graph[i][j] = backward_graph[i][j];
+                        }
+                    int matching_size_outward = khun::get_matching_size(mask);
+
+                    f2 += max(0, matching_size_outward - (msz - 1));
+                }
+            }
+        }
+        return min(f1, f2);
+    }
+
+
+    // n=6 success 26kk
     // n=7 success 40kk
     // n=8 success 3k
     bool is_discrete_test_Mminus(Matrix backward_G, Matrix G) {
@@ -813,7 +961,7 @@ namespace propositions {
         assert(banned_node != -1);
         initialize();
         fill_graph(backward_G, G);
-        fill_backward_upward_masks(true, true);
+        fill_backward_upward_masks(true, false);
         bool f1 = 0, f2 = 0;
         for (int mask = (1 << n) - 1; mask > 0; mask--) {
             if ((1 << banned_node) & mask)
@@ -829,20 +977,19 @@ namespace propositions {
                     }
                 int matching_size_outward = khun::get_matching_size(mask);
 
-                if (matching_size_outward < msz)
-                    continue;
+                if (matching_size_outward >= msz) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if ((1 << i) & mask) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0 && j != banned_node)
+                                    khun::khun_graph[i][j] = (graph[j][i]);
+                        }
 
-                fill(khun::khun_graph, 0);
-                for (int i = 0; i < n; i++)
-                    if ((1 << i) & mask) {
-                        for (int j = 0; j < n; j++)
-                            if (((1 << j) & mask) == 0 && j != banned_node)
-                                khun::khun_graph[i][j] = (graph[j][i]);
+                    int matching_size_backward = khun::get_matching_size(mask);
+                    if (matching_size_backward < msz) {
+                        f1 = 1;
                     }
-
-                int matching_size_backward = khun::get_matching_size(mask);
-                if (matching_size_backward < msz) {
-                    f1 = 1;
                 }
             }
             if (!f2) {
@@ -856,20 +1003,19 @@ namespace propositions {
                     }
                 int matching_size_outward = khun::get_matching_size(mask);
 
-                if (matching_size_outward < msz)
-                    continue;
+                if (matching_size_outward >= msz) {
+                    fill(khun::khun_graph, 0);
+                    for (int i = 0; i < n; i++)
+                        if (((1 << i) & mask) || i == banned_node) {
+                            for (int j = 0; j < n; j++)
+                                if (((1 << j) & mask) == 0 && j != banned_node)
+                                    khun::khun_graph[i][j] = (graph[j][i]);
+                        }
 
-                fill(khun::khun_graph, 0);
-                for (int i = 0; i < n; i++)
-                    if (((1 << i) & mask) || i == banned_node) {
-                        for (int j = 0; j < n; j++)
-                            if (((1 << j) & mask) == 0 && j != banned_node)
-                                khun::khun_graph[i][j] = (graph[j][i]);
+                    int matching_size_backward = khun::get_matching_size(mask | (1 << banned_node));
+                    if (matching_size_backward < msz + 1) {
+                        f2 = 1;
                     }
-
-                int matching_size_backward = khun::get_matching_size(mask | (1 << banned_node));
-                if (matching_size_backward < msz + 1) {
-                    f2 = 1;
                 }
             }
             if (f1 && f2)

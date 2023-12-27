@@ -229,8 +229,8 @@ void run() {
         return;
     }
 
-#define validator_func(a, b) propositions::is_discrete_Mpluspi_Mminus(a, b) && \
-                             propositions::is_discrete_test_Mminus(a, b)
+#define validator_func(a, b) propositions::is_discrete_Mpluspi_Nminus(a, b) && \
+                             propositions::is_discrete_test_Nminus(a, b)
     if (USE_HEURISTIC) {
 #define balance_func(a, b) propositions::get_discrete_Mpluspi_Mminus(a, b) + \
                            propositions::get_discrete_test_Mminus(a, b)

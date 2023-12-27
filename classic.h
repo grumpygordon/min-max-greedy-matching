@@ -42,7 +42,7 @@ using ull = unsigned long long;
 
 const int MAX_GRAPH_SIZE = 18, INF = (int)1e9 + 100;
 
-const int n = 7;
+const int n = 6;
 
 using Matrix = array<array<int, MAX_GRAPH_SIZE>, MAX_GRAPH_SIZE>;
 using EdgeList = vector<pair<int, int>>;

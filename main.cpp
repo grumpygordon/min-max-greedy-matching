@@ -345,17 +345,27 @@ void read_graph() {
         }
 }
 
-void solve_proposition() {
+const clock_t delay = CLOCKS_PER_SEC * 60 * 60 * 4;
+//const clock_t delay = CLOCKS_PER_SEC * 10;
 
+void print_time() {
+    auto now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+    cerr << ctime(&now) << '\n';
+}
+
+void solve_proposition() {
     auto START_TIME = clock();
+    auto last_update = clock();
     TS = 1;
     int next_ts = 10;
     int REAL_TS = 0;
     while (1) {
-        if (TS == next_ts) {
+        if (TS == next_ts || (clock() - last_update) >= delay) {
             cerr << TS << ' ' << REAL_TS << ' ' << (clock() - START_TIME) / (ld)CLOCKS_PER_SEC / 60 << '\n';
+            print_time();
 //            cerr << tot / (ld)cnt << '\n';
             next_ts = next_ts * 2;
+            last_update = clock();
         }
         TS++;
 //        int n = rnd() % 6 + 1;

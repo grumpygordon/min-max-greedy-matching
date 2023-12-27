@@ -954,7 +954,7 @@ namespace propositions {
 
 
     // n=6 success 26kk
-    // n=7 success 40kk
+    // n=7 success 40kk + 9kk
     // n=8 success 3k
     bool is_discrete_test_Mminus(Matrix backward_G, Matrix G) {
         PRINT_FUNCTION_NAME_MACRO
